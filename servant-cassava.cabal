@@ -11,10 +11,15 @@ license-file:        LICENSE
 author:              Servant Contributors
 maintainer:          haskell-servant-maintainers@googlegroups.com
 copyright:           2015-2016 Servant Contributors
--- category:
+category:            Web
 build-type:          Simple
 extra-source-files:  include/*.h
 cabal-version:       >=1.10
+bug-reports:         http://github.com/haskell-servant/servant-cassava/issues
+
+source-repository head
+  type: git
+  location: http://github.com/haskell-servant/servant-cassava.git
 
 library
   exposed-modules:     Servant.CSV.Cassava
