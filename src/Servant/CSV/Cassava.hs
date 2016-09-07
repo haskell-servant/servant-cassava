@@ -31,7 +31,9 @@ import           Servant.API        (Accept (..), MimeRender (..),
 
 data CSV' deriving (Typeable, Generic)
 
-type CSV = (CSV', DefaultDecodeOpts)
+type CSV = (CSV', DefaultOpts)
+
+data DefaultOpts deriving (Typeable, Generic)
 
 -- | @text/csv;charset=utf-8@
 instance Accept (CSV', a) where
@@ -72,9 +74,8 @@ instance ( DefaultOrdered a, ToNamedRecord a, EncodeOpts opt
 class EncodeOpts a where
     encodeOpts :: Proxy a -> EncodeOptions
 
-data DefaultEncodeOpts deriving (Typeable, Generic)
 
-instance EncodeOpts DefaultEncodeOpts where
+instance EncodeOpts DefaultOpts where
     encodeOpts _ = defaultEncodeOptions
 
 -- * Decoding
@@ -109,7 +110,5 @@ instance ( FromRecord a, DecodeOpts opt
 class DecodeOpts a where
     decodeOpts :: Proxy a -> DecodeOptions
 
-data DefaultDecodeOpts deriving (Typeable, Generic)
-
-instance DecodeOpts DefaultDecodeOpts where
+instance DecodeOpts DefaultOpts where
     decodeOpts _ = defaultDecodeOptions
