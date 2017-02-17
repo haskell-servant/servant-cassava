@@ -34,6 +34,7 @@ import           Servant.API        (Accept (..), MimeRender (..),
 data CSVwith(a :: HasHeader) deriving (Typeable, Generic)
 
 type CSV' = CSVwith 'HasHeader
+type CSVNoHeader = CSVwith 'NoHeader
 
 type CSV = (CSV', DefaultOpts)
 
@@ -62,7 +63,7 @@ instance ( DefaultOrdered a, ToNamedRecord a, EncodeOpts opt
 
 -- | Encode with 'encodeWith' - but no header!
 instance (ToRecord a, EncodeOpts opt
-         ) => MimeRender (CSVwith 'NoHeader, opt) [a] where
+         ) => MimeRender (CSVNoHeader, opt) [a] where
     mimeRender _ = encodeWith ((encodeOpts p){encIncludeHeader = False})
       where p = Proxy :: Proxy opt
 
@@ -81,7 +82,7 @@ instance ( DefaultOrdered a, ToNamedRecord a, EncodeOpts opt
 
 -- | Encode with 'encodeWith' - but no header
 instance (ToRecord a, EncodeOpts opt
-         ) => MimeRender (CSVwith 'NoHeader, opt) (Vector a) where
+         ) => MimeRender (CSVNoHeader, opt) (Vector a) where
     mimeRender _ = encodeWith ((encodeOpts p){encIncludeHeader = False}) . toList
       where p = Proxy :: Proxy opt
 
@@ -112,7 +113,7 @@ instance ( FromRecord a, DecodeOpts opt
 
 -- | Decode with 'decodeWith', for CSV without headers
 instance ( FromRecord a, DecodeOpts opt
-         ) => MimeUnrender (CSVwith 'NoHeader, opt) [a] where
+         ) => MimeUnrender (CSVNoHeader, opt) [a] where
     mimeUnrender _ bs = toList <$> decodeWith (decodeOpts p) NoHeader bs
       where p = Proxy :: Proxy opt
 
@@ -129,7 +130,7 @@ instance ( FromRecord a, DecodeOpts opt
 
 -- | Decode with 'decodeWith', for CSV without headers
 instance ( FromRecord a, DecodeOpts opt
-         ) => MimeUnrender (CSVwith 'NoHeader, opt) (Vector a) where
+         ) => MimeUnrender (CSVNoHeader, opt) (Vector a) where
     mimeUnrender _ = decodeWith (decodeOpts p) NoHeader
       where p = Proxy :: Proxy opt
 
