@@ -3,9 +3,10 @@ sudo: false
 language: c
 
 env:
-  - GHCVER=7.8.4 CABALVER=1.22
-  - GHCVER=7.10.3 CABALVER=1.22
-  - GHCVER=8.0.1 CABALVER=1.24
+  - GHCVER=7.8.4 CABALVER=head
+  - GHCVER=7.10.3 CABALVER=head
+  - GHCVER=8.0.1 CABALVER=head
+  - GHCVER=8.0.2 CABALVER=head
 
 addons:
   apt:
@@ -15,8 +16,8 @@ addons:
       - ghc-7.8.4
       - ghc-7.10.3
       - ghc-8.0.1
-      - cabal-install-1.22
-      - cabal-install-1.24
+      - ghc-8.0.2
+      - cabal-install-head
       - libgmp-dev
 
 install:
@@ -32,6 +33,10 @@ script:
   - cabal configure --enable-tests --disable-optimization --ghc-options='-Werror'
   - cabal build
   - cabal test
+
+branches:
+  only:
+    - master
 
 cache:
   directories:
