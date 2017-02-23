@@ -50,6 +50,10 @@ shasheaderToBool :: SHasHeader hasHeader -> Bool
 shasheaderToBool SHasHeader = True
 shasheaderToBool SNoHeader  = False
 
+lowerSHasHeader :: SHasHeader hasHeader -> HasHeader
+lowerSHasHeader SHasHeader = HasHeader
+lowerSHasHeader SNoHeader  = NoHeader
+
 -- | Default options, instances providing 'defaultDecodeOptions' and 'defaultEncodeOptions'.
 data DefaultOpts deriving (Typeable, Generic)
 
@@ -133,22 +137,27 @@ instance ( FromNamedRecord a, DecodeOpts opt
     mimeUnrender _ bs = fmap toList <$> decodeByNameWith (decodeOpts p) bs
       where p = Proxy :: Proxy opt
 
--- | Decode with 'decodeWith'. Assumes data has headers, which are stripped.
-instance ( FromRecord a, DecodeOpts opt
+-- | Decode with 'decodeWith'.
+instance ( FromRecord a, DecodeOpts opt, SHasHeaderI hasHeader
          ) => MimeUnrender (CSV' hasHeader opt) [a] where
-    mimeUnrender _ bs = toList <$> decodeWith (decodeOpts p) HasHeader bs
-      where p = Proxy :: Proxy opt
+    mimeUnrender _  = fmap toList . decodeWith (decodeOpts p) (lowerSHasHeader sh)
+      where
+        p = Proxy :: Proxy opt
+        sh = shasheader :: SHasHeader hasHeader
 
 instance ( FromNamedRecord a, DecodeOpts opt
          ) => MimeUnrender (CSV' 'HasHeader opt) (Header, Vector a) where
     mimeUnrender _ = decodeByNameWith (decodeOpts p)
       where p = Proxy :: Proxy opt
 
--- | Decode with 'decodeWith'. Assumes data has headers, which are stripped.
-instance ( FromRecord a, DecodeOpts opt
+-- | Decode with 'decodeWith'.
+instance ( FromRecord a, DecodeOpts opt, SHasHeaderI hasHeader
          ) => MimeUnrender (CSV' hasHeader opt) (Vector a) where
-    mimeUnrender _ = decodeWith (decodeOpts p) HasHeader
-      where p = Proxy :: Proxy opt
+    mimeUnrender _ = decodeWith (decodeOpts p) (lowerSHasHeader sh)
+      where
+        p = Proxy :: Proxy opt
+        sh = shasheader :: SHasHeader hasHeader
+
 
 -- ** Decode Options
 
