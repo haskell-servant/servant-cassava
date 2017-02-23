@@ -1,3 +1,8 @@
+0.9
+---
+
+* Refactorerd `CSV`' type.
+
 0.8
 ---
 
