@@ -11,7 +11,6 @@ maintainer:          haskell-servant-maintainers@googlegroups.com
 copyright:           2015-2016 Servant Contributors
 category:            Web
 build-type:          Simple
-extra-source-files:  include/*.h
 cabal-version:       >=1.10
 bug-reports:         http://github.com/haskell-servant/servant-cassava/issues
 
