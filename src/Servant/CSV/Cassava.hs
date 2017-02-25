@@ -18,7 +18,9 @@
 --
 -- >>> type EgDefault = Get '[CSV] [(Int, String)]
 --
-module Servant.CSV.Cassava where
+module Servant.CSV.Cassava ( module Servant.CSV.Cassava
+                           , HasHeader(..)
+                           ) where
 
 import           Prelude ()
 import           Prelude.Compat 
