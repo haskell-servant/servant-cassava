@@ -1,8 +1,8 @@
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -11,37 +11,56 @@
 -- | A @CSV@ empty datatype with `MimeRender` and `MimeUnrender` instances for
 -- @cassava@'s encoding and decoding classes.
 --
--- >>> type Eg = Get '[(CSV', MyEncodeOptions)] [(Int, String)]
+-- >>> type Eg = Get '[CSV' 'HasHeader MyEncodeOptions] [(Int, String)]
 --
 -- Default encoding and decoding options are also provided, along with the
 -- @CSV@ type synonym that uses them.
 --
 -- >>> type EgDefault = Get '[CSV] [(Int, String)]
-module Servant.CSV.Cassava where
+--
+module Servant.CSV.Cassava ( module Servant.CSV.Cassava
+                           , HasHeader(..)
+                           ) where
 
-#if !MIN_VERSION_base(4,8,0)
-import           Control.Applicative        ((<$>))
-#endif
+import           Prelude ()
+import           Prelude.Compat 
+
 import           Data.Csv
-import           Data.Proxy         (Proxy (..))
-import           Data.Typeable      (Typeable)
-import           Data.Vector        (Vector, toList)
-import           GHC.Generics       (Generic)
-import qualified Network.HTTP.Media as M
-import           Servant.API        (Accept (..), MimeRender (..),
-                                     MimeUnrender (..))
+import           Data.ByteString.Lazy (ByteString)
+import           Data.Proxy           (Proxy (..))
+import           Data.Typeable        (Typeable)
+import           Data.Vector          (Vector, toList)
+import           GHC.Generics         (Generic)
+import qualified Network.HTTP.Media   as M
+import           Servant.API          (Accept (..), MimeRender (..),
+                                      MimeUnrender (..))
 
-data CSVwith(a :: HasHeader) deriving (Typeable, Generic)
+data CSV' (hasHeader :: HasHeader) opt deriving (Typeable)
+type CSV = CSV' 'HasHeader DefaultOpts
 
-type CSV' = CSVwith 'HasHeader
-type CSVNoHeader = CSVwith 'NoHeader
+-- | 'HasHeader singleton.
+data SHasHeader (hasHeader :: HasHeader) where
+    SHasHeader  :: SHasHeader 'HasHeader
+    SNoHeader   :: SHasHeader 'NoHeader
 
-type CSV = (CSV', DefaultOpts)
+-- | Class to provide 'SHasHeader' implicitly.
+class SHasHeaderI (hasHeader :: HasHeader) where shasheader :: SHasHeader hasHeader
+instance SHasHeaderI 'HasHeader where shasheader = SHasHeader
+instance SHasHeaderI 'NoHeader  where shasheader = SNoHeader
 
+shasheaderToBool :: SHasHeader hasHeader -> Bool
+shasheaderToBool SHasHeader = True
+shasheaderToBool SNoHeader  = False
+
+lowerSHasHeader :: SHasHeader hasHeader -> HasHeader
+lowerSHasHeader SHasHeader = HasHeader
+lowerSHasHeader SNoHeader  = NoHeader
+
+-- | Default options, instances providing 'defaultDecodeOptions' and 'defaultEncodeOptions'.
 data DefaultOpts deriving (Typeable, Generic)
 
 -- | @text/csv;charset=utf-8@
-instance Accept (CSVwith x, a) where
+instance Accept (CSV' hasHeader opt) where
     contentType _ = "text" M.// "csv" M./: ("charset", "utf-8")
 
 -- * Encoding
@@ -50,47 +69,62 @@ instance Accept (CSVwith x, a) where
 
 -- | Encode with 'encodeByNameWith'. The 'Header' param is used for determining
 -- the order of headers and fields.
-instance ( ToNamedRecord a, EncodeOpts opt
-         ) => MimeRender (CSV', opt) (Header, [a]) where
-    mimeRender _ (hdr, vals) = encodeByNameWith (encodeOpts p) hdr vals
-      where p = Proxy :: Proxy opt
+instance ( ToNamedRecord a, EncodeOpts opt, SHasHeaderI hasHeader
+         ) => MimeRender (CSV' hasHeader opt) (Header, [a]) where
+    mimeRender _ (hdr, vals) = encodeByNameWith opts hdr vals
+      where
+        opts = encodeOpts' (Proxy :: Proxy opt) (Proxy :: Proxy hasHeader)
 
--- | Encode with 'encodeDefaultOrderedByNameWith'
-instance ( DefaultOrdered a, ToNamedRecord a, EncodeOpts opt
-         ) => MimeRender (CSV', opt) [a] where
-    mimeRender _ = encodeDefaultOrderedByNameWith (encodeOpts p)
-      where p = Proxy :: Proxy opt
+-- | A class to determine how to encode a list of elements
+--
+-- * 'HasHeader' encode with 'encodeDefaultOrderedByNameWith'
+--
+-- * 'NoHeader' encode with 'encodeWith'
+--
+-- Currently, it's not possible to encode without headers using 'encodeDefaultOrderedByNameWith'.
+--
+class EncodeList (hasHeader :: HasHeader) a where
+    encodeList :: Proxy hasHeader -> EncodeOptions -> [a] -> ByteString
 
--- | Encode with 'encodeWith' - but no header!
-instance (ToRecord a, EncodeOpts opt
-         ) => MimeRender (CSVNoHeader, opt) [a] where
-    mimeRender _ = encodeWith ((encodeOpts p){encIncludeHeader = False})
-      where p = Proxy :: Proxy opt
+-- | 'encodeDefaultOrderedByNameWith'
+instance (DefaultOrdered a, ToNamedRecord a) => EncodeList 'HasHeader a where
+    encodeList _ opts vals = encodeDefaultOrderedByNameWith opts { encIncludeHeader = True } vals
+
+-- | 'encodeWith'
+instance (ToRecord a) => EncodeList 'NoHeader a where
+    encodeList _ opts vals = encodeWith opts { encIncludeHeader = False } vals
+
+instance ( EncodeOpts opt, EncodeList hasHeader a
+         ) => MimeRender (CSV' hasHeader opt) [a] where
+    mimeRender _ = encodeList (Proxy :: Proxy hasHeader) opts
+      where
+        opts = encodeOpts (Proxy :: Proxy opt)
 
 -- | Encode with 'encodeByNameWith'. The 'Header' param is used for determining
 -- the order of headers and fields.
-instance ( ToNamedRecord a, EncodeOpts opt
-         ) => MimeRender (CSV', opt) (Header, Vector a) where
-    mimeRender _ (hdr, vals) = encodeByNameWith (encodeOpts p) hdr (toList vals)
-      where p = Proxy :: Proxy opt
+instance ( ToNamedRecord a, EncodeOpts opt, SHasHeaderI hasHeader
+         ) => MimeRender (CSV' hasHeader opt) (Header, Vector a) where
+    mimeRender _ (hdr, vals) = encodeByNameWith opts hdr (toList vals)
+      where
+        opts = encodeOpts' (Proxy :: Proxy opt) (Proxy :: Proxy hasHeader)
 
--- | Encode with 'encodeDefaultOrderedByNameWith'
-instance ( DefaultOrdered a, ToNamedRecord a, EncodeOpts opt
-         ) => MimeRender (CSV', opt) (Vector a) where
-    mimeRender _ = encodeDefaultOrderedByNameWith (encodeOpts p) . toList
-      where p = Proxy :: Proxy opt
-
--- | Encode with 'encodeWith' - but no header
-instance (ToRecord a, EncodeOpts opt
-         ) => MimeRender (CSVNoHeader, opt) (Vector a) where
-    mimeRender _ = encodeWith ((encodeOpts p){encIncludeHeader = False}) . toList
-      where p = Proxy :: Proxy opt
+instance ( EncodeOpts opt, EncodeList hasHeader a
+         ) => MimeRender (CSV' hasHeader opt) (Vector a) where
+    mimeRender _ = encodeList (Proxy :: Proxy hasHeader) opts . toList
+      where
+        opts = encodeOpts (Proxy :: Proxy opt)
 
 -- ** Encode Options
 
-class EncodeOpts a where
-    encodeOpts :: Proxy a -> EncodeOptions
+class EncodeOpts opt where
+    encodeOpts :: Proxy opt -> EncodeOptions
 
+encodeOpts'
+    :: forall opt hasHeader.  (EncodeOpts opt, SHasHeaderI hasHeader)
+    => Proxy opt -> Proxy hasHeader -> EncodeOptions
+encodeOpts' p _ = (encodeOpts p)
+    { encIncludeHeader = shasheaderToBool (shasheader :: SHasHeader hasHeader)
+    }
 
 instance EncodeOpts DefaultOpts where
     encodeOpts _ = defaultEncodeOptions
@@ -99,40 +133,33 @@ instance EncodeOpts DefaultOpts where
 
 -- ** Instances
 
--- | Decode with 'decodeByNameWith'
+-- | Decode with 'decodeByNameWith'.
 instance ( FromNamedRecord a, DecodeOpts opt
-         ) => MimeUnrender (CSV', opt) (Header, [a]) where
+         ) => MimeUnrender (CSV' 'HasHeader opt) (Header, [a]) where
     mimeUnrender _ bs = fmap toList <$> decodeByNameWith (decodeOpts p) bs
       where p = Proxy :: Proxy opt
 
--- | Decode with 'decodeWith', strips the headers
-instance ( FromRecord a, DecodeOpts opt
-         ) => MimeUnrender (CSV', opt) [a] where
-    mimeUnrender _ bs = toList <$> decodeWith (decodeOpts p) HasHeader bs
-      where p = Proxy :: Proxy opt
-
--- | Decode with 'decodeWith', for CSV without headers
-instance ( FromRecord a, DecodeOpts opt
-         ) => MimeUnrender (CSVNoHeader, opt) [a] where
-    mimeUnrender _ bs = toList <$> decodeWith (decodeOpts p) NoHeader bs
-      where p = Proxy :: Proxy opt
+-- | Decode with 'decodeWith'.
+instance ( FromRecord a, DecodeOpts opt, SHasHeaderI hasHeader
+         ) => MimeUnrender (CSV' hasHeader opt) [a] where
+    mimeUnrender _  = fmap toList . decodeWith (decodeOpts p) (lowerSHasHeader sh)
+      where
+        p = Proxy :: Proxy opt
+        sh = shasheader :: SHasHeader hasHeader
 
 instance ( FromNamedRecord a, DecodeOpts opt
-         ) => MimeUnrender (CSV', opt) (Header, Vector a) where
+         ) => MimeUnrender (CSV' 'HasHeader opt) (Header, Vector a) where
     mimeUnrender _ = decodeByNameWith (decodeOpts p)
       where p = Proxy :: Proxy opt
 
--- | Decode with 'decodeWith'. Assumes data has headers, which are stripped.
-instance ( FromRecord a, DecodeOpts opt
-         ) => MimeUnrender (CSV', opt) (Vector a) where
-    mimeUnrender _ = decodeWith (decodeOpts p) HasHeader
-      where p = Proxy :: Proxy opt
+-- | Decode with 'decodeWith'.
+instance ( FromRecord a, DecodeOpts opt, SHasHeaderI hasHeader
+         ) => MimeUnrender (CSV' hasHeader opt) (Vector a) where
+    mimeUnrender _ = decodeWith (decodeOpts p) (lowerSHasHeader sh)
+      where
+        p = Proxy :: Proxy opt
+        sh = shasheader :: SHasHeader hasHeader
 
--- | Decode with 'decodeWith', for CSV without headers
-instance ( FromRecord a, DecodeOpts opt
-         ) => MimeUnrender (CSVNoHeader, opt) (Vector a) where
-    mimeUnrender _ = decodeWith (decodeOpts p) NoHeader
-      where p = Proxy :: Proxy opt
 
 -- ** Decode Options
 
