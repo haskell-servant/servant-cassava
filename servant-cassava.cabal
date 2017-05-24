@@ -1,6 +1,5 @@
 name:                servant-cassava
-version:             0.8.1
-x-revision:          2
+version:             0.9
 synopsis:            Servant CSV content-type for cassava
 -- description:
 homepage:            http://haskell-servant.readthedocs.org/
@@ -24,7 +23,7 @@ library
                      , base-compat >=0.9.1 && <0.10
                      , bytestring
                      , cassava >0.4 && <0.5
-                     , servant >=0.7 && <0.11
+                     , servant >=0.7 && <0.12
                      , http-media
                      , vector
   hs-source-dirs:      src

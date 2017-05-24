@@ -23,7 +23,7 @@ module Servant.CSV.Cassava ( module Servant.CSV.Cassava
                            ) where
 
 import           Prelude ()
-import           Prelude.Compat 
+import           Prelude.Compat
 
 import           Data.Csv
 import           Data.ByteString.Lazy (ByteString)
