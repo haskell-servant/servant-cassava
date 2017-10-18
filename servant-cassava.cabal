@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:     Servant.CSV.Cassava
+                     , Servant.CSV.Cassava.TSV
   build-depends:       base >=4.6 && <5
                      , base-compat >=0.9.1 && <0.10
                      , bytestring
