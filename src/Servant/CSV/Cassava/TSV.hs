@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds                   #-}
 {-# LANGUAGE KindSignatures              #-}
 {-# LANGUAGE OverloadedStrings           #-}
+{-# LANGUAGE DeriveDataTypeable          #-}
 
 
 -- | A @TSV@ (tab separated values) empty datatype with `MimeRender` and `MimeUnrender` instances for
@@ -15,7 +16,7 @@
 --
 -- >>> type EgDefault = Get '[TSV] [(Int, String)]
 
-module Servant.CSV.Cassava.TSV (TSV', TSV, TSVOpts) where
+module Servant.CSV.Cassava.TSV (TSV', TSV, TSVOpts, HasHeader(..)) where
 
 import           Data.Char            (ord)
 import           Data.Csv
@@ -27,6 +28,7 @@ import           Servant.API          (Accept (..), MimeRender (..),
                                       MimeUnrender (..))
 import           Servant.CSV.Cassava
 
+-- Note we can't do this as an alias for CSV, because the Accept instance is for a different Content-Type.
 data TSV' (hasHeader :: HasHeader) opt deriving (Typeable)
 type TSV = TSV' 'HasHeader TSVOpts
 
