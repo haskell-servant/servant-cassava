@@ -1,6 +1,6 @@
 name:                servant-cassava
 version:             0.9
-x-revision:          1
+x-revision:          2
 synopsis:            Servant CSV content-type for cassava
 description:         Servant CSV content-type for cassava.
 homepage:            http://haskell-servant.readthedocs.org/
