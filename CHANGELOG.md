@@ -1,3 +1,9 @@
+0.10
+----
+
+* `EncodeOpts` and `DecodeOpts` merged into just `EncodeOpts`.
+* Add `TabSeparatedOpts` for `text/tab-separated-values`.
+
 0.9
 ---
 
