@@ -25,7 +25,6 @@ module Servant.CSV.Cassava ( module Servant.CSV.Cassava
 import           Prelude ()
 import           Prelude.Compat
 
-import           Data.Char            (ord)
 import           Data.Csv
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Proxy           (Proxy (..))
@@ -118,11 +117,23 @@ instance ( EncodeOpts opt, EncodeList hasHeader a
       where
         opts = encodeOpts (Proxy :: Proxy opt)
 
--- ** Encode Options
+-- ** Encode/Decode Options
 
 class EncodeOpts opt where
     encodeOpts :: Proxy opt -> EncodeOptions
+
+    decodeOpts :: Proxy opt -> DecodeOptions
+    decodeOpts p = DecodeOptions
+        { decDelimiter = encDelimiter e
+        }
+      where
+        e = encodeOpts p
+
     csvContentType :: Proxy opt -> M.MediaType
+    csvContentType p = case encDelimiter (encodeOpts p) of
+        -- ord '\t' = 9
+        9 -> "text" M.// "tab-separated-values" M./: ("charset", "utf-8")
+        _ -> "text" M.// "csv" M./: ("charset", "utf-8")
 
 encodeOpts'
     :: forall opt hasHeader.  (EncodeOpts opt, SHasHeaderI hasHeader)
@@ -133,11 +144,12 @@ encodeOpts' p _ = (encodeOpts p)
 
 instance EncodeOpts DefaultOpts where
     encodeOpts _ = defaultEncodeOptions
-    csvContentType _ = "text" M.// "csv" M./: ("charset", "utf-8")
+    decodeOpts _ = defaultDecodeOptions
 
 instance EncodeOpts TabSeparatedOpts where
-    encodeOpts _ = defaultEncodeOptions {encDelimiter = fromIntegral (ord '\t')}
-    csvContentType _ = "text" M.// "tab-separated-values" M./: ("charset", "utf-8")
+    -- ord '\t' = 9
+    encodeOpts _ = defaultEncodeOptions { encDelimiter = 9 }
+    decodeOpts _ = defaultDecodeOptions { decDelimiter = 9 }
 
 
 -- * Decoding
@@ -145,40 +157,28 @@ instance EncodeOpts TabSeparatedOpts where
 -- ** Instances
 
 -- | Decode with 'decodeByNameWith'.
-instance ( FromNamedRecord a, DecodeOpts opt, EncodeOpts opt
+instance ( FromNamedRecord a, EncodeOpts opt
          ) => MimeUnrender (CSV' 'HasHeader opt) (Header, [a]) where
     mimeUnrender _ bs = fmap toList <$> decodeByNameWith (decodeOpts p) bs
       where p = Proxy :: Proxy opt
 
 -- | Decode with 'decodeWith'.
-instance ( FromRecord a, DecodeOpts opt, EncodeOpts opt, SHasHeaderI hasHeader
+instance ( FromRecord a, EncodeOpts opt, SHasHeaderI hasHeader
          ) => MimeUnrender (CSV' hasHeader opt) [a] where
     mimeUnrender _  = fmap toList . decodeWith (decodeOpts p) (lowerSHasHeader sh)
       where
         p = Proxy :: Proxy opt
         sh = shasheader :: SHasHeader hasHeader
 
-instance ( FromNamedRecord a, DecodeOpts opt, EncodeOpts opt
+instance ( FromNamedRecord a, EncodeOpts opt
          ) => MimeUnrender (CSV' 'HasHeader opt) (Header, Vector a) where
     mimeUnrender _ = decodeByNameWith (decodeOpts p)
       where p = Proxy :: Proxy opt
 
 -- | Decode with 'decodeWith'.
-instance ( FromRecord a, DecodeOpts opt, EncodeOpts opt, SHasHeaderI hasHeader
+instance ( FromRecord a, EncodeOpts opt, SHasHeaderI hasHeader
          ) => MimeUnrender (CSV' hasHeader opt) (Vector a) where
     mimeUnrender _ = decodeWith (decodeOpts p) (lowerSHasHeader sh)
       where
         p = Proxy :: Proxy opt
         sh = shasheader :: SHasHeader hasHeader
-
-
--- ** Decode Options
-
-class DecodeOpts a where
-    decodeOpts :: Proxy a -> DecodeOptions
-
-instance DecodeOpts DefaultOpts where
-    decodeOpts _ = defaultDecodeOptions
-
-instance DecodeOpts TabSeparatedOpts where
-    decodeOpts _ = defaultDecodeOptions {decDelimiter = fromIntegral (ord '\t')}
