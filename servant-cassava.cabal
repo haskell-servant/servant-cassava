@@ -1,6 +1,6 @@
 name:                servant-cassava
 version:             0.10
-x-revision:          3
+x-revision:          4
 synopsis:            Servant CSV content-type for cassava
 description:         Servant CSV content-type for cassava.
 homepage:            http://haskell-servant.readthedocs.org/
@@ -14,11 +14,12 @@ build-type:          Simple
 cabal-version:       >=1.10
 bug-reports:         http://github.com/haskell-servant/servant-cassava/issues
 tested-with:
-  GHC==7.8.4,
-  GHC==7.10.3,
-  GHC==8.0.2,
-  GHC==8.2.2,
-  GHC==8.4.3
+  GHC ==7.8.4
+   || ==7.10.3
+   || ==8.0.2
+   || ==8.2.2
+   || ==8.4.4
+   || ==8.6.1
 
 source-repository head
   type: git
