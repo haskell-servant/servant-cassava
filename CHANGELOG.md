@@ -1,3 +1,7 @@
+0.10.1
+----
+* Bumped upper bounds on servant to 0.19
+
 0.10
 ----
 
