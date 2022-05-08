@@ -30,7 +30,7 @@ source-repository head
 library
   exposed-modules:     Servant.CSV.Cassava
   build-depends:       base >=4.7 && <5
-                     , base-compat >=0.9.1 && <0.12
+                     , base-compat >=0.9.1 && <0.13
                      , bytestring
                      , cassava >=0.4.3 && <0.6
                      , servant >=0.7 && <0.20
