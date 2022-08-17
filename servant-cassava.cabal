@@ -1,6 +1,6 @@
 cabal-version:       >=1.10
 name:                servant-cassava
-version:             0.10.1
+version:             0.10.2
 x-revision:          7
 
 synopsis:            Servant CSV content-type for cassava
