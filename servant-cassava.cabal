@@ -32,7 +32,7 @@ library
                      , base-compat >=0.9.1 && <0.13
                      , bytestring
                      , cassava >=0.4.3 && <0.6
-                     , servant >=0.7 && <0.20
+                     , servant >=0.7 && <0.21
                      , http-media
                      , vector
   hs-source-dirs:      src
